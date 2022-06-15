@@ -12,3 +12,6 @@ Directory.Read.All
 User.Read.All
 
 Details user and application sign-in activity for a tenant (directory). You must have an Azure AD Premium P1 or P2 license to download sign-in logs using the Microsoft Graph API
+
+lastSignInDateTime :Azure AD maintains interactive sign-ins going back to April 2020
+lastNonInteractiveSignInDateTime : Azure AD maintains non-interactive sign-ins going back to May 2020
