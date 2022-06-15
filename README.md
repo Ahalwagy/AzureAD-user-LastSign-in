@@ -4,7 +4,6 @@ This script will check the last sign activity for the Azure AD users, Last Sign 
 
 In common scenarios, the user has a valid token so he is continuing login using non-interactive login and from interactive login, he could be show as no sign in for the last month.
 
-This script is reading from Sign-logs for maximum last 30 days only.
 This Script is based on Azure APP with APIs with Application Permission , below are the API permission granted:
 
 AuditLog.Read.All
