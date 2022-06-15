@@ -33,9 +33,10 @@ $ConnectGraph = Invoke-RestMethod -Uri "https://login.microsoftonline.com/$Tenat
 
 $token = $ConnectGraph.access_token
 
-$inputfile= "Path"
+#$inputfile= "Path"
+# Get All the users in the tenant , or optionally you can read from file
 
-$invitations = import-csv $inputfile -Encoding Default
+$invitations = Get-AzureADUser -All $true
 
 #Create outputfile
 
@@ -53,15 +54,13 @@ $Date = (Get-Date).AddDays(-30).ToString('yyyy-MM-dd')
 foreach($item in $invitations)
 
 {
-        $kid = $item.KID
+ 
 
-        $account = $kid + "@eon.com"
-
-        $obj = $account.ToLower()
+        $obj = $item.UserDisplayName
 
       try {  
       
-            $user = Get-AzureADUser -ObjectId $account
+            $user = $item
 
 
             if($user -ne $null)
