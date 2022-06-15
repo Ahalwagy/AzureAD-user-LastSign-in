@@ -235,6 +235,7 @@ foreach($item in $invitations)
 
   }
 
+#Create a report in excel and upload to teams
 
 try
 {
@@ -256,7 +257,7 @@ try
      #$SharepointURL = "https://eonos.sharepoint.com/sites/RegITTeamsSecurityGroups-Mapping"
 
     #Connect-PnPOnline $SharepointURL -UseWebLogin
-
+    #Upload to Teams
     try
     {
        Add-PnPFile -Folder "Shared Documents/General/Enviam/Sign-in Activity Output" -Path $workbook
@@ -277,8 +278,8 @@ catch
     Write-Host "Excel File Creation Error-->" $_.Exception.Message -ForegroundColor Yellow
   }
 
-    #Upload to Teams
 
 
 
-#Get-AzureADAuditSignInLogs -Filter "UserId eq '$objectid' and appDisplayName eq 'Microsoft Teams' and status/errorCode eq 0 " | Where-Object {$_.createdDateTime -gt "$StartDate"}| Select CreatedDateTime ,UserDisplayName , UserPrincipalName ,AppDisplayName
+
+
