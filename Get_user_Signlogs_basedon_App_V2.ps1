@@ -5,20 +5,20 @@ if($aadmodule -eq $null)
 {Import-Module AzureADPreview}
 
 if($session -eq $null)
-{$session= Connect-AzureAD -TenantDomain "b914a242-e718-443b-a47c-6b4c649d8c0a"}
+{$session= Connect-AzureAD -TenantDomain "Tenantid"}
 
 
-#Connect to SharePoint Teams 
+#Connect to SharePoint Teams in case of uploading the report to Teams or Sharepoint
 
-$SharepointURL = "https://eonos.sharepoint.com/sites/RegITTeamsSecurityGroups-Mapping"
+$SharepointURL = "SharePoint URl"
 
 Connect-PnPOnline $SharepointURL -UseWebLogin
 
 #Graph Login
 
-$ApplicationID = "26d079f9-3c35-41f0-9d57-abb447995371"
-$TenatDomainName = "b914a242-e718-443b-a47c-6b4c649d8c0a"
-$AccessSecret = "zFn8Q~6dvrWrSKb5mj1IDdCyzBjeGejoi3a1pcmA"
+$ApplicationID = "Application Appid"
+$TenatDomainName = "TenantId"
+$AccessSecret = "Secretkey"
 
 
 $Body = @{    
@@ -33,10 +33,7 @@ $ConnectGraph = Invoke-RestMethod -Uri "https://login.microsoftonline.com/$Tenat
 
 $token = $ConnectGraph.access_token
 
-
-
-#Get-AzureADAuditSignInLogs -Filter "startsWith(userPrincipalName,'JNiyomugabo@Contoso.com')"
-$inputfile= "C:\Halwagy\Enviam_Teams\Signin_Source\SCOPING_ENVIAM_INPUT.csv"
+$inputfile= "Path"
 
 $invitations = import-csv $inputfile -Encoding Default
 
@@ -46,7 +43,7 @@ $date = Get-Date -Format yyyy_dd_MM_hh_mm_tt
 
 $filename = "Teams_Signin_"+ $date + ".csv"
 
-$Path = "C:\Halwagy\Enviam_Teams\Signin_Output\$filename"
+$Path = "Path\$filename"
 
 $StartDate = (Get-Date).AddDays(-30).GetDateTimeFormats()[114]
 
