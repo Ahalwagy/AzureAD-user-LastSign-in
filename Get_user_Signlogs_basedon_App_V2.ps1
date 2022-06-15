@@ -1,24 +1,19 @@
-﻿$aadmodule = get-module | select Name | Where-Object {$_.Name -match "AzureAD"}
+$aadmodule = get-module | select Name | Where-Object {$_.Name -match "AzureAD"}
 
 if($aadmodule -eq $null)
 
 {Import-Module AzureADPreview}
 
+$TenatDomainName = "TenantID"
+
 if($session -eq $null)
-{$session= Connect-AzureAD -TenantDomain "Tenantid"}
+{$session= Connect-AzureAD -TenantDomain $TenatDomainName }
 
-
-#Connect to SharePoint Teams in case of uploading the report to Teams or Sharepoint
-
-$SharepointURL = "SharePoint URl"
-
-Connect-PnPOnline $SharepointURL -UseWebLogin
 
 #Graph Login
 
-$ApplicationID = "Application Appid"
-$TenatDomainName = "TenantId"
-$AccessSecret = "Secretkey"
+$ApplicationID = "ApplicationID"
+$AccessSecret = "Secret Key"
 
 
 $Body = @{    
@@ -36,82 +31,53 @@ $token = $ConnectGraph.access_token
 #$inputfile= "Path"
 # Get All the users in the tenant , or optionally you can read from file
 
-$invitations = Get-AzureADUser -All $true
+$users = Get-AzureADUser -All $true
 
 #Create outputfile
 
 $date = Get-Date -Format yyyy_dd_MM_hh_mm_tt
 
-$filename = "Teams_Signin_"+ $date + ".csv"
+$filename = "Signin_"+ $date + ".csv"
 
 $Path = "Path\$filename"
 
-$StartDate = (Get-Date).AddDays(-30).GetDateTimeFormats()[114]
-
-$Date = (Get-Date).AddDays(-30).ToString('yyyy-MM-dd')
-
-
-foreach($item in $invitations)
+foreach($user in $users)
 
 {
+
+ $objectid = $user.ObjectId
+  
  
+       try
+       { 
 
-        $obj = $item.UserDisplayName
+            $LoginUrl = "https://graph.microsoft.com/beta/users/$objectid/?`$select=userPrincipalName,signInActivity"
 
-      try {  
-      
-            $user = $item
-
-
-            if($user -ne $null)
-
-            {
-
-                    $objectid = $user.ObjectId
-
-                    $results = Get-AzureADAuditSignInLogs -Filter "UserId eq '$objectid' and startswith(appDisplayName,'Microsoft Teams') and status/errorCode eq 0 and createdDateTime gt $Date" -Top 1 | Select CreatedDateTime ,UserDisplayName , UserPrincipalName ,AppDisplayName
-
-                    Start-Sleep -s 2
+            $signin = Invoke-RestMethod -Headers @{Authorization = "Bearer $($token)"} -Uri $LoginUrl -Method Get | select signInActivity 
 
 
-                    if($results -ne $null)
-
-                        {
-                            $record = $results[0]
-
-                                     $csvValue = New-Object psobject -Property @{
-                                                                                  CreatedDateTime  = $record.CreatedDateTime
-                                                                                   UserDisplayName = $record.UserDisplayName
-                                                                                   KID = $kid
-                                                                                   UserPrincipalName = $record.UserPrincipalName
-                                                                                   AppDisplayName = $record.AppDisplayName
-                                                                                    Comments = "Interactive"
+             $csvValue = New-Object psobject -Property @{
+                                                                               
+                                                                                   UserDisplayName = $user.DisplayName
+                                                                                   UserPrincipalName = $user.UserPrincipalName
+                                                                                   ObjectId=$user.ObjectId
+                                                                                   lastSignInDateTime = $signin.signInActivity.lastSignInDateTime
+                                                                                   lastNonInteractiveSignInDateTime=$signin.signInActivity.lastNonInteractiveSignInDateTime
                                                                                              }
 
-                                    $csvValue | Select CreatedDateTime, UserDisplayName, KID, UserPrincipalName, AppDisplayName, Comments |Export-Csv $Path  -NoTypeInformation -Append -Encoding Default
+                                    $csvValue | Select UserDisplayName,UserPrincipalName,ObjectId,lastSignInDateTime,lastNonInteractiveSignInDateTime |Export-Csv $Path  -NoTypeInformation -Append -Encoding Default
 
-                                    $output= $csvValue | Select CreatedDateTime, UserDisplayName, KID, UserPrincipalName, AppDisplayName, Comments
+                                    $output= $csvValue | Select UserDisplayName,UserPrincipalName,ObjectId,lastSignInDateTime,lastNonInteractiveSignInDateTime
 
                                     Write-Host $output -ForegroundColor DarkGreen
-            
-                        }
 
-                    else
+             
 
-                        {  
-                           try{ 
-                            
-                                $LoginUrl = "https://graph.microsoft.com/beta/auditLogs/signIns/?filter=userPrincipalName eq '$obj' and startswith(appDisplayName,'Microsoft Teams') and signInEventTypes/any(t: t eq 'nonInteractiveUser') and createdDateTime ge $Date &`$top=1"
+           }
 
-                                $non = (Invoke-RestMethod -Headers @{Authorization = "Bearer $($token)"} -Uri $LoginUrl -Method Get).value[0]
+    catch
 
-                                Start-Sleep -s 3
-
-                              }
-
-                            catch
-
-                            {
+        {
                                 Write-Host "Token Expired-->" $_.Exception.Message -ForegroundColor White
 
                                 
@@ -128,111 +94,39 @@ foreach($item in $invitations)
 
                                     $token = $ConnectGraph.access_token
 
-                                    $LoginUrl = "https://graph.microsoft.com/beta/auditLogs/signIns/?filter=userPrincipalName eq '$obj' and startswith(appDisplayName,'Microsoft Teams') and signInEventTypes/any(t: t eq 'nonInteractiveUser') and createdDateTime ge $Date &`$top=1"
+                                     $LoginUrl = "https://graph.microsoft.com/beta/users/$objectid/?`$select=userPrincipalName,signInActivity"
 
-                                    $non = (Invoke-RestMethod -Headers @{Authorization = "Bearer $($token)"} -Uri $LoginUrl -Method Get).value[0]
-                                
-                                    
-                                    Start-Sleep -s 3
-                                
-                                
-                            
-                            }
+                                     $signin = Invoke-RestMethod -Headers @{Authorization = "Bearer $($token)"} -Uri $LoginUrl -Method Get | select signInActivity 
 
-                            if($non -ne $null)
+                                     $signin.signInActivity.lastSignInDateTime
+                                     $signin.signInActivity.lastNonInteractiveSignInDateTime
 
-                            {
-                                $csvValue = New-Object psobject -Property @{
-                                                                                  CreatedDateTime  = $non.createdDateTime
-                                                                                   UserDisplayName = $non.userDisplayName
-                                                                                   KID = $kid
-                                                                                   UserPrincipalName = $non.userPrincipalName
-                                                                                   AppDisplayName = $non.appDisplayName
-                                                                                    Comments = "Non-Interactive"
+                                     $csvValue = New-Object psobject -Property @{
+                                                                               
+                                                                                   UserDisplayName = $user.DisplayName
+                                                                                   UserPrincipalName = $user.UserPrincipalName
+                                                                                   ObjectId=$user.ObjectId
+                                                                                   lastSignInDateTime = $signin.signInActivity.lastSignInDateTime
+                                                                                   lastNonInteractiveSignInDateTime=$signin.signInActivity.lastNonInteractiveSignInDateTime
                                                                                              }
 
-                                    $csvValue | Select CreatedDateTime, UserDisplayName, KID, UserPrincipalName, AppDisplayName, Comments |Export-Csv $Path  -NoTypeInformation -Append -Encoding Default
+                                    $csvValue | Select UserDisplayName, UserPrincipalName, ObjectId, lastSignInDateTime, lastNonInteractiveSignInDateTime |Export-Csv $Path  -NoTypeInformation -Append -Encoding Default
 
-                                    $output= $csvValue | Select CreatedDateTime, UserDisplayName, KID, UserPrincipalName, AppDisplayName, Comments
+                                    $output= $csvValue | Select UserDisplayName, UserPrincipalName, ObjectId, lastSignInDateTime, lastNonInteractiveSignInDateTime
 
                                     Write-Host $output -ForegroundColor DarkGreen
-                               
-                            }
-
-                            else
-
-                            {
+                                
                             
-                                     $csvValue = New-Object psobject -Property @{
-                                                                                  CreatedDateTime  = ""
-                                                                                   UserDisplayName = $user.DisplayName
-                                                                                   KID = $kid
-                                                                                   UserPrincipalName = $user.UserPrincipalName
-                                                                                   AppDisplayName = ""
-                                                                                    Comments = "No teams successfull sign in activity since 30 days"
-                                                                                             }
-
-                                    $csvValue | Select CreatedDateTime, UserDisplayName, KID, UserPrincipalName, AppDisplayName, Comments |Export-Csv $Path  -NoTypeInformation -Append -Encoding Default
-
-                                    $output= $csvValue | Select CreatedDateTime, UserDisplayName, KID , UserPrincipalName, AppDisplayName, Comments
-
-                                    Write-Host $output -ForegroundColor Yellow
-                            
-                            
-                            }
-                
-                        }
-
-                }
-
-
-            else
-
-            {
-                 $csvValue = New-Object psobject -Property @{
-                                                                                  CreatedDateTime  = ""
-                                                                                   UserDisplayName = ""
-                                                                                   KID= $kid
-                                                                                   UserPrincipalName = ""
-                                                                                   AppDisplayName = ""
-                                                                                    Comments = "No Azure AD Account exists"
-                                                                                             }
-
-                                    $csvValue | Select CreatedDateTime, UserDisplayName, KID, UserPrincipalName, AppDisplayName, Comments |Export-Csv $Path  -NoTypeInformation -Append -Encoding Default
-
-                                    $output= $csvValue | Select CreatedDateTime, UserDisplayName, kID,  UserPrincipalName, AppDisplayName, Comments
-
-                                    Write-Host $output -ForegroundColor Red
-        
-        
-        
             }
 
-        }
+                           
 
-    catch
+                            
+                
+}
 
-      {
-         $csvValue = New-Object psobject -Property @{
-                                                                                  CreatedDateTime  = ""
-                                                                                   UserDisplayName = ""
-                                                                                   KID= $kid
-                                                                                   UserPrincipalName = ""
-                                                                                   AppDisplayName = ""
-                                                                                    Comments = "No Azure AD Account exists"
-                                                                                             }
+               
 
-                                    $csvValue | Select CreatedDateTime, UserDisplayName, KID, UserPrincipalName, AppDisplayName, Comments |Export-Csv $Path  -NoTypeInformation -Append -Encoding Default
-
-                                    $output= $csvValue | Select CreatedDateTime, UserDisplayName, kID,  UserPrincipalName, AppDisplayName, Comments
-
-                                    Write-Host $output -ForegroundColor Red
-
-                                    Write-Host "Account Exception" $_.Exception.Message -ForegroundColor Yellow
-    
-      }
-
-  }
 
 #Create a report in excel and upload to teams
 
@@ -253,21 +147,7 @@ try
 
   if (Test-Path $Path) { Remove-Item $Path}
 
-     #$SharepointURL = "https://eonos.sharepoint.com/sites/RegITTeamsSecurityGroups-Mapping"
-
-    #Connect-PnPOnline $SharepointURL -UseWebLogin
-    #Upload to Teams
-    try
-    {
-       Add-PnPFile -Folder "Shared Documents/General/Enviam/Sign-in Activity Output" -Path $workbook
-    
-    }
-
-    catch
-
-    {
-        Write-Host "Excel File Upload Error-->" $_.Exception.Message -ForegroundColor Magenta
-    }
+   
 
   }
 
